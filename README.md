@@ -1,46 +1,87 @@
 # The Increased Severance Clock
 
-A sign of bulb digits, after the National Debt Clock that went up in New York in 1989. The big number is the
-sum of the wins. Add a win ("90k", "90,000.00", "1.2m") and the clock counts up to the new total.
+A sign of bulb digits, after the National Debt Clock that went up in New York in 1989. The top number is the
+total of the wins, and it keeps ticking between them. Add a win and the clock counts up to the new total.
 
 **Open it:** https://minitru.github.io/severance-clock/
 
-- **Starting at** is what had been won before the clock; the wins you enter add onto it.
-- **Add a win** ("Latest win") under the sign. A win can be removed again; the clock counts back down.
-- **Between wins it keeps ticking, then trues up.** Set an increment rate per week (20k to start; 0 stops it). The top
-  number is the recorded wins plus an estimate: the rate times the time since the last win. Entering the next
-  win trues the sign up to the recorded total. The list under the sign is the record, and says how far ahead
-  the sign is.
-- **Change the words** in the settings: the top line, the line beside the second number, and the bottom line.
-  `<i>…</i>` and `<b>…</b>` are allowed for italics and bold; nothing else is taken as HTML.
-- **The second number** changes at once and blinks; it can be the latest win, how many wins, the average win, or a number you type.
+## Dan: how to run your clock
+
+The clock reads its wins from a Google Sheet. You never edit your website again after step 3: a new win is a new
+row in the sheet.
+
+### 1. Get the sheet
+
+The clock is already reading a sheet called **Severance Clock wins**. Ask Sean to share it with you as an
+editor, and you are done with this step. It has three columns:
+
+| Date | Amount | Note |
+| --- | --- | --- |
+| 2026-10-06 | 90000 | whatever helps you remember |
+
+- **Date** is the day of the win, written like `2026-10-06` or `10/6/2026`.
+- **Amount** can be `90000`, `$90,000.00` or `90k`.
+- **Note** is for you. It shows in the list on the clock's own page, never on the sign.
+
+Would you rather own the sheet? Make a Google Sheet with those three headings, press **Share**, set General
+access to **Anyone with the link** as **Viewer**, copy the link, and paste it into **Google Sheet of wins** on
+the clock. Then carry on from step 2.
+
+**The sheet is public to anyone who has its link.** Put no names or details in it that you would not publish.
+
+### 2. Set the sign up once
+
+Open the clock and use the settings under the sign:
+
+- **Top line, line beside the second number, bottom line:** the three lines of lettering. Wrap words in
+  `<i>…</i>` for italics or `<b>…</b>` for bold.
+- **Starting at:** what you had won before the first row in the sheet. The rows add onto it.
+- **Increment rate, per week:** how fast the top number ticks between wins. `20k` to start; `0` stops it.
+- **The second number shows:** the latest win, how many wins, the average, or a number you type.
+
+These settings are remembered in your browser, and they travel inside the embed code in step 3.
+
+### 3. Put it on your Squarespace site, once
+
+1. On the clock, press **Copy embed code**.
+2. In Squarespace, edit the page, add a block, and choose **Code**.
+3. Paste, leave the type as HTML, and save.
+
+The sign takes the width of its column. Squarespace offers the Code block on its paid plans above the entry
+one. If you later change the lettering, the starting amount or the rate, copy the embed code again and replace
+the old one; a new win never needs that.
+
+### 4. When you win
+
+Add a row to the sheet. Within a minute every copy of the sign counts up to the new total and the latest
+recovery blinks: on the clock's page, on your site, and on any link you have sent. No reload, nothing to paste.
+
+Made a mistake? Fix or delete the row. The sign follows.
+
+### What the top number means
+
+It is the recorded total (the starting amount plus the rows) plus an estimate: the weekly rate times the time
+since the last win. When you add the next win, the sign **trues up** to the recorded total and starts ticking
+again from there. If the estimate had run ahead of the real figure, the sign comes down to it. The clock's own
+page always says, under the list, what is recorded and how far ahead the sign is running.
+
+### Sharing it elsewhere
+
+- **Copy a link to this sign** gives a link that opens the sign alone, read-only, and stays up to date.
 - **Show only the sign** hides everything else, for a screen on the wall.
-- **Copy a link to this sign** gives a link that shows the sign as it is now, read-only, to anyone.
-- **Copy embed code** gives an `<iframe>` snippet that puts the sign, and nothing else, on another web page.
+- LinkedIn and most social posts cannot embed a live page. Post the link, or a short screen recording.
 
-## Keeping it up to date: a Google Sheet
+## Without a sheet
 
-Typed-in wins live only in the browser that typed them, so a sign embedded on a website would be a snapshot.
-Connect a Google Sheet and a new win is a new row; every copy of the sign, embedded ones too, follows within a
-minute. The sheet is read, never written.
+Clear the **Google Sheet of wins** field and the clock goes back to wins typed into **Latest win**. Those live
+only in the browser that typed them, so a copied link or embed code is then a snapshot of the sign as it stood,
+and has to be copied again after each win.
 
-1. Make a Google Sheet with three columns: **Date**, **Amount**, **Note**. One row per win.
-   Amounts can be `90000`, `$90,000.00` or `90k`.
-2. In the sheet: **File → Share → Publish to web**, choose the sheet, publish, and copy the link.
-3. On the clock, paste the link into **Google Sheet of wins**. The list fills from the sheet.
-4. Set the three lines, **Starting at** and the **Increment rate** as you want them.
-5. Press **Copy embed code** and paste it into the website once (below). After that, only the sheet changes.
+## How it is made
 
-Anyone with the published link can read the sheet, so put in it only what may be public. The Note column is
-shown on the clock's own page, not on the sign.
-
-## Putting it on a Squarespace page
-
-Edit the page, add a block, choose **Code**, and paste the embed code with the type set to HTML. Squarespace
-allows the Code block on its paid plans above the entry one. The sign takes the width of its column.
-
-One file, `index.html`. No libraries, no server, no tracking. The wins are kept in the browser that entered
-them (localStorage); a copied link carries its numbers and words in the link itself.
+One file, `index.html`. No libraries, no server, no tracking. Settings are kept in the browser (localStorage).
+The sheet is read as CSV, once when the page opens and once a minute after; it is never written to.
+`embed-example.html` shows the sign inside an ordinary page.
 
 The dollar bills behind the lettering are public-domain photographs of a United States one-dollar bill, front
 and back, from Wikimedia Commons, loaded from there when the page opens.
