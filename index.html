@@ -28,13 +28,14 @@
     padding: clamp(14px, 3vw, 34px) clamp(12px, 3vw, 36px);
     background-color: #6f7a66; box-shadow: 0 18px 50px rgba(0,0,0,.6), inset 0 0 0 2px rgba(255,255,255,.06);
   }
-  .sign::before {   /* the banknotes behind the lettering: a drawn pattern, not a photograph */
-    content: ''; position: absolute; inset: -20%; opacity: .5; transform: rotate(-8deg);
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='420' height='190' viewBox='0 0 420 190'%3E%3Cdefs%3E%3Cpattern id='h' width='4' height='4' patternUnits='userSpaceOnUse'%3E%3Cpath d='M0 4L4 0' stroke='%231d2b1f' stroke-width='.5'/%3E%3C/pattern%3E%3C/defs%3E%3Crect x='6' y='6' width='408' height='178' fill='%23c9cfbf' stroke='%231d2b1f' stroke-width='3'/%3E%3Crect x='16' y='16' width='388' height='158' fill='url(%23h)' stroke='%231d2b1f' stroke-width='1'/%3E%3Cellipse cx='210' cy='95' rx='58' ry='70' fill='%23d8dccf' stroke='%231d2b1f' stroke-width='3'/%3E%3Cellipse cx='210' cy='95' rx='48' ry='60' fill='none' stroke='%231d2b1f' stroke-width='1'/%3E%3Ccircle cx='96' cy='95' r='34' fill='%23d8dccf' stroke='%231d2b1f' stroke-width='2'/%3E%3Ccircle cx='324' cy='95' r='34' fill='%23d8dccf' stroke='%231d2b1f' stroke-width='2'/%3E%3Cg font-family='Georgia,serif' font-weight='700' fill='%231d2b1f'%3E%3Ctext x='34' y='52' font-size='34'%3E1%3C/text%3E%3Ctext x='368' y='52' font-size='34'%3E1%3C/text%3E%3Ctext x='34' y='164' font-size='34'%3E1%3C/text%3E%3Ctext x='368' y='164' font-size='34'%3E1%3C/text%3E%3Ctext x='96' y='104' font-size='24' text-anchor='middle'%3EONE%3C/text%3E%3Ctext x='324' y='104' font-size='24' text-anchor='middle'%3EONE%3C/text%3E%3C/g%3E%3C/svg%3E");
-    background-size: 420px 190px;
-  }
-  .sign::after { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at center, rgba(20,24,18,.25), rgba(10,12,9,.62)); }
-  .sign > * { position: relative; z-index: 1; }
+  /* THE BANKNOTES BEHIND THE LETTERING: real one-dollar bills, front and back, scattered as on the 1989 sign.
+     The photographs are public domain (works of the US government) and are loaded from Wikimedia Commons; the
+     script lays them out. If they do not load, the sign is its plain grey-green. */
+  .bills { position: absolute; inset: 0; z-index: 0; overflow: hidden; filter: saturate(.55) brightness(.82) contrast(1.05); }
+  .bills i { position: absolute; display: block; width: 46%; aspect-ratio: 800 / 349; background-size: cover; background-position: center;
+    box-shadow: 0 2px 10px rgba(0,0,0,.55); border-radius: 2px; }
+  .sign::after { content: ''; position: absolute; inset: 0; z-index: 0; background: radial-gradient(ellipse at center, rgba(20,24,18,.34), rgba(8,10,7,.66)); }
+  .sign > :not(.bills) { position: relative; z-index: 1; }
   .lettering {
     font-family: "Times New Roman", Times, Georgia, serif; font-weight: 700; color: var(--ink); letter-spacing: .04em;
     text-shadow: 0 2px 0 rgba(0,0,0,.55), 0 0 18px rgba(0,0,0,.5); line-height: 1.05; outline: none; border-radius: 4px;
@@ -92,6 +93,7 @@
 <body>
 <div class="wrap">
   <section class="sign" id="sign" aria-label="The clock">
+    <div class="bills" id="bills" aria-hidden="true"></div>
     <div class="lettering" id="title" contenteditable="true" spellcheck="false" aria-label="Title. Click to change it."></div>
     <div class="row" id="main" aria-hidden="true"></div>
     <div class="subrow">
@@ -204,6 +206,23 @@ function setRow(row, n) {
   return changed;
 }
 const wholeDigits = (n, cents) => String(cents ? Math.floor(Math.max(0, n) / 100) : Math.max(0, Math.round(n))).length;
+
+/* ---------- the dollars behind it ---------- */
+const BILLS = ['https://upload.wikimedia.org/wikipedia/commons/thumb/7/7b/United_States_one_dollar_bill%2C_obverse.jpg/960px-United_States_one_dollar_bill%2C_obverse.jpg',
+  'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1d/United_States_one_dollar_bill%2C_reverse.jpg/960px-United_States_one_dollar_bill%2C_reverse.jpg'];
+(function scatterBills() {
+  // the same scatter every time (a fixed seed), so the sign looks the same on every visit and in every shared link
+  let seed = 1989; const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  const box = $('bills'); const cols = 4, rows = 4;
+  for (let r = 0; r < rows; r += 1) for (let c = 0; c < cols; c += 1) {
+    const b = document.createElement('i');
+    b.style.backgroundImage = `url("${BILLS[(r + c) % 2]}")`;
+    b.style.left = `${(c / cols) * 100 - 12 + (rnd() - 0.5) * 14}%`;
+    b.style.top = `${(r / rows) * 100 - 14 + (rnd() - 0.5) * 16}%`;
+    b.style.transform = `rotate(${((rnd() - 0.5) * 70).toFixed(1)}deg)`;
+    box.appendChild(b);
+  }
+}());
 
 /* ---------- state ---------- */
 const shared = (() => {   // a link made by "Copy a link": the sign as it was, read-only

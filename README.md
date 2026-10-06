@@ -14,3 +14,6 @@ sum of the wins. Add a win ("90k", "90,000.00", "1.2m") and the clock counts up 
 
 One file, `index.html`. No libraries, no server, no tracking. The wins are kept in the browser that entered
 them (localStorage); a copied link carries its numbers and words in the link itself.
+
+The dollar bills behind the lettering are public-domain photographs of a United States one-dollar bill, front
+and back, from Wikimedia Commons, loaded from there when the page opens.
