@@ -88,6 +88,9 @@
   body.show .wrap { max-width: none; min-height: 100vh; display: flex; flex-direction: column; justify-content: center; }
   #leave { display: none; margin: 14px auto 0; }
   body.show #leave { display: block; }
+  /* embedded in another page: the sign and nothing else, on that page's own background */
+  body.embed { background: none; } body.embed .wrap { padding: 0; } body.embed #leave { display: none; }
+  body.embed .sign { border-radius: 0; box-shadow: none; }
 </style>
 </head>
 <body>
@@ -142,6 +145,7 @@
       <div class="tools">
         <button type="button" id="show" title="Hide everything but the sign, for a screen on the wall">Show only the sign</button>
         <button type="button" id="link" title="A link that shows this sign, as it is now, to anyone">Copy a link to this sign</button>
+        <button type="button" id="embed" title="A snippet that puts this sign, as it is now, on another web page">Copy embed code</button>
         <button type="button" id="sound"></button>
       </div>
       <p class="hint">Everything is kept in this browser only. Nothing is sent anywhere. A copied link carries the numbers and words in the link itself.</p>
@@ -378,16 +382,19 @@ document.title = words('foot');
 
 $('show').onclick = () => { document.body.classList.add('show'); layout(); };
 $('leave').onclick = () => { if (shared) { location.href = location.pathname; return; } document.body.classList.remove('show'); layout(); };
-$('link').onclick = async () => {
-  const q = new URLSearchParams({ v: String(total()), r: String(Math.round(paceOf() * 100)), a: String(lastWinAt()), s: String(subValue()), d: subIsDollars() ? '1' : '0', t: state.title, l: state.subLabel, f: state.foot });
-  const url = `${location.origin}${location.pathname}#${q}`;
-  try { await navigator.clipboard.writeText(url); $('msg').textContent = 'Link copied. It shows the sign as it is right now.'; }
-  catch (e) { $('msg').textContent = url; }
+const signLink = (extra = {}) => {
+  const q = new URLSearchParams({ v: String(total()), r: String(Math.round(paceOf() * 100)), a: String(lastWinAt()), s: String(subValue()), d: subIsDollars() ? '1' : '0', t: state.title, l: state.subLabel, f: state.foot, ...extra });
+  return `${location.origin}${location.pathname}#${q}`;
 };
+const copy = async (text, said) => { try { await navigator.clipboard.writeText(text); $('msg').textContent = said; } catch (e) { $('msg').textContent = text; } };
+$('link').onclick = () => copy(signLink(), 'Link copied. It shows the sign as it is right now.');
+// the sign is about twice as wide as it is tall; the frame keeps that shape at any width
+$('embed').onclick = () => copy(`<iframe src="${signLink({ embed: '1' }).replace(/&/g, '&amp;')}" title="${words('foot').replace(/"/g, '&quot;')}" style="width:100%;aspect-ratio:2/1;border:0" loading="lazy"></iframe>`,
+  'Embed code copied. It shows the sign as it is right now; copy it again after a new win.');
 window.addEventListener('resize', layout);
 window.addEventListener('hashchange', () => location.reload());   // a shared link pasted over an open clock
 
-if (shared) { document.body.classList.add('show'); $('leave').textContent = 'Make a clock of your own'; }
+if (shared) { document.body.classList.add('show'); $('leave').textContent = 'Make a clock of your own'; if (new URLSearchParams(location.hash.slice(1)).get('embed') === '1') document.body.classList.add('embed'); }
 else { paintWins(); paintSettings(); paintTruth(); setInterval(paintTruth, 5000); }
 // the tick: four times a second the top number is brought to where the pace puts it; silent, the click is for wins
 setInterval(() => { if (counting || !mainRow) return; const t = signTotal(); if (t === shownMain) return; if (wholeDigits(t, true) > mainRow.digits) { shownMain = t; layout(); return; } shownMain = t; setRow(mainRow, t); }, 250);

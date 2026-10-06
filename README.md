@@ -16,6 +16,9 @@ sum of the wins. Add a win ("90k", "90,000.00", "1.2m") and the clock counts up 
 - **The second number** can be the latest win, how many wins, the average win, or a number you type.
 - **Show only the sign** hides everything else, for a screen on the wall.
 - **Copy a link to this sign** gives a link that shows the sign as it is now, read-only, to anyone.
+- **Copy embed code** gives an `<iframe>` snippet that puts the sign, and nothing else, on another web page.
+  Like the link, it is the sign as it was when copied: it keeps ticking at the rate, but a new win needs a new
+  copy, because the wins live in the browser that entered them.
 
 One file, `index.html`. No libraries, no server, no tracking. The wins are kept in the browser that entered
 them (localStorage); a copied link carries its numbers and words in the link itself.
