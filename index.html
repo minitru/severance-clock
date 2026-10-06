@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dan's Increased Severance Clock</title>
+<meta name="description" content="A bulb-digit clock, after the 1989 National Debt Clock, that counts up every time an increased severance is added.">
+<style>
+  :root { --p: 10px; --amber: #ffb52e; --ink: #f4efe2; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    min-height: 100vh; color: #e9e4d8; font: 15px/1.5 -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    /* a brick wall, as the sign hung on one */
+    background-color: #2a1512;
+    background-image:
+      linear-gradient(rgba(0,0,0,.35) 2px, transparent 2px),
+      linear-gradient(90deg, rgba(0,0,0,.35) 2px, transparent 2px),
+      linear-gradient(90deg, rgba(0,0,0,.35) 2px, transparent 2px);
+    background-size: 100% 26px, 78px 52px, 78px 52px;
+    background-position: 0 0, 0 0, 39px 26px;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 28px 16px 60px; }
+
+  /* ---------- the sign ---------- */
+  .sign {
+    position: relative; overflow: hidden; border: 3px solid #0d0d0b; border-radius: 4px;
+    padding: clamp(14px, 3vw, 34px) clamp(12px, 3vw, 36px);
+    background-color: #6f7a66; box-shadow: 0 18px 50px rgba(0,0,0,.6), inset 0 0 0 2px rgba(255,255,255,.06);
+  }
+  .sign::before {   /* the banknotes behind the lettering: a drawn pattern, not a photograph */
+    content: ''; position: absolute; inset: -20%; opacity: .5; transform: rotate(-8deg);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='420' height='190' viewBox='0 0 420 190'%3E%3Cdefs%3E%3Cpattern id='h' width='4' height='4' patternUnits='userSpaceOnUse'%3E%3Cpath d='M0 4L4 0' stroke='%231d2b1f' stroke-width='.5'/%3E%3C/pattern%3E%3C/defs%3E%3Crect x='6' y='6' width='408' height='178' fill='%23c9cfbf' stroke='%231d2b1f' stroke-width='3'/%3E%3Crect x='16' y='16' width='388' height='158' fill='url(%23h)' stroke='%231d2b1f' stroke-width='1'/%3E%3Cellipse cx='210' cy='95' rx='58' ry='70' fill='%23d8dccf' stroke='%231d2b1f' stroke-width='3'/%3E%3Cellipse cx='210' cy='95' rx='48' ry='60' fill='none' stroke='%231d2b1f' stroke-width='1'/%3E%3Ccircle cx='96' cy='95' r='34' fill='%23d8dccf' stroke='%231d2b1f' stroke-width='2'/%3E%3Ccircle cx='324' cy='95' r='34' fill='%23d8dccf' stroke='%231d2b1f' stroke-width='2'/%3E%3Cg font-family='Georgia,serif' font-weight='700' fill='%231d2b1f'%3E%3Ctext x='34' y='52' font-size='34'%3E1%3C/text%3E%3Ctext x='368' y='52' font-size='34'%3E1%3C/text%3E%3Ctext x='34' y='164' font-size='34'%3E1%3C/text%3E%3Ctext x='368' y='164' font-size='34'%3E1%3C/text%3E%3Ctext x='96' y='104' font-size='24' text-anchor='middle'%3EONE%3C/text%3E%3Ctext x='324' y='104' font-size='24' text-anchor='middle'%3EONE%3C/text%3E%3C/g%3E%3C/svg%3E");
+    background-size: 420px 190px;
+  }
+  .sign::after { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at center, rgba(20,24,18,.25), rgba(10,12,9,.62)); }
+  .sign > * { position: relative; z-index: 1; }
+  .lettering {
+    font-family: "Times New Roman", Times, Georgia, serif; font-weight: 700; color: var(--ink); letter-spacing: .04em;
+    text-shadow: 0 2px 0 rgba(0,0,0,.55), 0 0 18px rgba(0,0,0,.5); line-height: 1.05; outline: none; border-radius: 4px;
+  }
+  .lettering[contenteditable=true]:hover { background: rgba(255,255,255,.08); cursor: text; }
+  .lettering[contenteditable=true]:focus { background: rgba(0,0,0,.35); box-shadow: 0 0 0 2px var(--amber); }
+  #title { font-size: clamp(22px, 5.4vw, 64px); text-transform: uppercase; text-align: center; margin: 0 0 calc(var(--p) * 1.4); }
+  #foot { font-size: clamp(18px, 4.4vw, 52px); text-transform: uppercase; text-align: center; margin: calc(var(--p) * 1.6) 0 0; }
+  .subrow { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: calc(var(--p) * 1.2); margin-top: calc(var(--p) * 1.6); }
+  #sublabel { font-size: clamp(18px, 4vw, 46px); font-style: italic; flex: 1 1 auto; min-width: 6ch; }
+
+  /* ---------- bulbs ---------- */
+  .row { display: flex; gap: calc(var(--p) * .5); justify-content: center; }
+  .subrow .row { justify-content: flex-end; }
+  .cell { display: grid; grid-auto-rows: var(--p); padding: calc(var(--p) * .5); background: #070504; border-radius: calc(var(--p) * .25); box-shadow: inset 0 0 0 1px #1c1410; }
+  .cell.c5 { grid-template-columns: repeat(5, var(--p)); } .cell.c2 { grid-template-columns: repeat(2, var(--p)); }
+  .cell.bare { background: none; box-shadow: none; }
+  .cell i { width: calc(var(--p) * .8); height: calc(var(--p) * .8); margin: auto; border-radius: 50%; background: #2b1a0b; }
+  .cell.bare i { background: transparent; }
+  .cell i.on { background: radial-gradient(circle at 45% 40%, #fff6cf 0, #ffc34a 38%, #ff7e0a 100%); box-shadow: 0 0 calc(var(--p) * .7) rgba(255,140,10,.95), 0 0 calc(var(--p) * 1.6) rgba(255,110,0,.35); }
+
+  /* ---------- the desk under the sign ---------- */
+  .desk { margin-top: 22px; display: grid; gap: 16px; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); }
+  @media (max-width: 820px) { .desk { grid-template-columns: 1fr; } }
+  .panel { background: rgba(14,12,11,.88); border: 1px solid #3a302b; border-radius: 10px; padding: 16px 18px; }
+  .panel h2 { margin: 0 0 10px; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: #b9ad9c; font-weight: 600; }
+  label { display: block; font-size: 12.5px; color: #b9ad9c; margin: 10px 0 4px; }
+  input[type=text], input[type=number], select {
+    width: 100%; padding: 9px 11px; border-radius: 7px; border: 1px solid #4a3f39; background: #151211; color: #f2ede3; font: inherit; }
+  input:focus, select:focus, button:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
+  .addrow { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) auto; gap: 8px; align-items: end; }
+  @media (max-width: 520px) { .addrow { grid-template-columns: 1fr; } }
+  button { font: inherit; cursor: pointer; border-radius: 7px; border: 1px solid #4a3f39; background: #221d1b; color: #f2ede3; padding: 9px 14px; }
+  button:hover { background: #2c2623; }
+  button.go { background: #c9781a; border-color: #e29a3a; color: #1a0f02; font-weight: 700; }
+  button.go:hover { background: #e08a22; }
+  button.quiet { padding: 4px 9px; font-size: 12.5px; }
+  .msg { min-height: 20px; font-size: 13px; color: #ffb36b; margin-top: 8px; }
+  .wins { list-style: none; margin: 0; padding: 0; max-height: 300px; overflow: auto; }
+  .wins li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 10px; align-items: baseline; padding: 8px 0; border-top: 1px solid #2c2522; font-size: 14px; }
+  .wins li:first-child { border-top: 0; }
+  .wins .amt { font-variant-numeric: tabular-nums; font-weight: 700; color: #ffd08a; }
+  .wins .note { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .wins .when { color: #8f8375; font-size: 12.5px; white-space: nowrap; }
+  .empty { color: #8f8375; font-size: 14px; }
+  .tools { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+  .hint { font-size: 12.5px; color: #8f8375; margin-top: 10px; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  body.show .desk { display: none; }
+  body.show .wrap { max-width: none; min-height: 100vh; display: flex; flex-direction: column; justify-content: center; }
+  #leave { display: none; margin: 14px auto 0; }
+  body.show #leave { display: block; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <section class="sign" id="sign" aria-label="The clock">
+    <div class="lettering" id="title" contenteditable="true" spellcheck="false" aria-label="Title. Click to change it."></div>
+    <div class="row" id="main" aria-hidden="true"></div>
+    <div class="subrow">
+      <div class="lettering" id="sublabel" contenteditable="true" spellcheck="false" aria-label="The label beside the second number. Click to change it."></div>
+      <div class="row" id="sub" aria-hidden="true"></div>
+    </div>
+    <div class="lettering" id="foot" contenteditable="true" spellcheck="false" aria-label="The name of the clock. Click to change it."></div>
+  </section>
+  <p class="sr" id="said" aria-live="polite"></p>
+  <button type="button" id="leave">Back to the desk</button>
+
+  <div class="desk">
+    <div class="panel">
+      <h2>Add a win</h2>
+      <form id="add" class="addrow" autocomplete="off">
+        <div><label for="amt">Amount</label><input type="text" id="amt" inputmode="decimal" placeholder="90k or 90,000.00" required></div>
+        <div><label for="note">What it was (optional)</label><input type="text" id="note" placeholder="Who or what it was for" maxlength="120"></div>
+        <button class="go" type="submit">Add it</button>
+      </form>
+      <div class="msg" id="msg" role="status"></div>
+      <h2 style="margin-top:14px">Wins so far</h2>
+      <ul class="wins" id="wins"></ul>
+    </div>
+    <div class="panel">
+      <h2>The sign</h2>
+      <p class="hint" style="margin-top:0">Click any lettering on the sign to change it: the title, the label beside the second number, and the name at the bottom.</p>
+      <label for="submode">The second number shows</label>
+      <select id="submode">
+        <option value="latest">The latest win</option>
+        <option value="count">How many wins</option>
+        <option value="avg">The average win</option>
+        <option value="custom">A number I type</option>
+      </select>
+      <div id="customBox" hidden>
+        <label for="subval">That number</label>
+        <input type="text" id="subval" inputmode="decimal" placeholder="12">
+        <label style="display:flex;gap:8px;align-items:center;margin-top:10px"><input type="checkbox" id="subdollar"> Show it as dollars</label>
+      </div>
+      <div class="tools">
+        <button type="button" id="show" title="Hide everything but the sign, for a screen on the wall">Show only the sign</button>
+        <button type="button" id="link" title="A link that shows this sign, as it is now, to anyone">Copy a link to this sign</button>
+        <button type="button" id="sound"></button>
+      </div>
+      <p class="hint">Everything is kept in this browser only. Nothing is sent anywhere. A copied link carries the numbers and words in the link itself.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+/* THE SEVERANCE CLOCK. A sign of bulb digits, after the National Debt Clock that went up in New York in 1989.
+ * The big number is the sum of the wins; adding a win makes it count up to the new total. One file, no libraries,
+ * no server: the state lives in localStorage, and a shared link carries its own state in the address. */
+const $ = (id) => document.getElementById(id);
+const KEY = 'severance-clock.v1';
+const DEFAULTS = { title: 'Increased severance:', subLabel: 'LATEST Recovery', foot: "Dan's Increased Severance Clock", wins: [], subMode: 'latest', subCustom: 0, subDollar: false, mute: false };
+
+/* ---------- 5 x 7 bulbs ---------- */
+const FONT = {
+  '0': ['01110','10001','10011','10101','11001','10001','01110'],
+  '1': ['00100','01100','00100','00100','00100','00100','01110'],
+  '2': ['01110','10001','00001','00010','00100','01000','11111'],
+  '3': ['11111','00010','00100','00010','00001','10001','01110'],
+  '4': ['00010','00110','01010','10010','11111','00010','00010'],
+  '5': ['11111','10000','11110','00001','00001','10001','01110'],
+  '6': ['00110','01000','10000','11110','10001','10001','01110'],
+  '7': ['11111','00001','00010','00100','01000','01000','01000'],
+  '8': ['01110','10001','10001','01110','10001','10001','01110'],
+  '9': ['01110','10001','10001','01111','00001','00010','01100'],
+  '$': ['00100','01111','10100','01110','00101','11110','00100'],
+  ',': ['00','00','00','00','00','11','01'],
+  '.': ['00','00','00','00','00','11','11'],
+  ' ': ['00000','00000','00000','00000','00000','00000','00000'],
+};
+function makeCell(cols, bare) {
+  const c = document.createElement('div'); c.className = `cell c${cols}${bare ? ' bare' : ''}`;
+  for (let k = 0; k < cols * 7; k += 1) c.appendChild(document.createElement('i'));
+  return c;
+}
+function light(cell, glyph) {
+  if (cell.dataset.g === glyph) return false;
+  cell.dataset.g = glyph;
+  const rows = FONT[glyph] || FONT[' ']; const dots = cell.children; const cols = dots.length / 7;   // the cell's own width: a blank is five wide, a comma cell two
+  for (let r = 0; r < 7; r += 1) for (let c = 0; c < cols; c += 1) dots[r * cols + c].classList.toggle('on', rows[r][c] === '1');
+  return true;
+}
+/** A row of bulb cells: `digits` whole-number cells with a comma cell every three from the right, a $ at the far
+ *  left when asked, and a point with two more cells when the row shows cents. */
+function buildRow(el, digits, dollar, cents) {
+  el.textContent = ''; const row = { el, digits, dollar, cents, cells: [], commas: [], frac: [], units: 0 };
+  if (dollar) { row.sign = makeCell(5, true); el.appendChild(row.sign); row.units += 6.5; }
+  for (let i = 0; i < digits; i += 1) {
+    const d = makeCell(5); el.appendChild(d); row.cells.push(d); row.units += 6.5;
+    if (i < digits - 1 && (digits - 1 - i) % 3 === 0) { const c = makeCell(2, true); el.appendChild(c); row.commas[i] = c; row.units += 3.5; }
+  }
+  if (cents) {
+    row.point = makeCell(2, true); el.appendChild(row.point); row.units += 3.5;
+    for (let i = 0; i < 2; i += 1) { const d = makeCell(5); el.appendChild(d); row.frac.push(d); row.units += 6.5; }
+  }
+  row.units -= 0.5;
+  return row;
+}
+/** Show a number on a row: a count, or an amount held in cents when the row shows cents. Returns how many cells
+ *  changed, so the sound can follow the bulbs. */
+function setRow(row, n) {
+  const v = Math.max(0, Math.round(n)); const whole = row.cents ? Math.floor(v / 100) : v;
+  const s = String(whole).padStart(row.digits, ' ').slice(-row.digits); let changed = 0;
+  if (row.sign) light(row.sign, '$');
+  row.cells.forEach((cell, i) => { if (light(cell, s[i])) changed += 1; if (row.commas[i]) light(row.commas[i], s[i] === ' ' ? ' ' : ','); });
+  if (row.cents) { const f = String(v % 100).padStart(2, '0'); light(row.point, '.'); row.frac.forEach((cell, i) => { if (light(cell, f[i])) changed += 1; }); }
+  return changed;
+}
+const wholeDigits = (n, cents) => String(cents ? Math.floor(Math.max(0, n) / 100) : Math.max(0, Math.round(n))).length;
+
+/* ---------- state ---------- */
+const shared = (() => {   // a link made by "Copy a link": the sign as it was, read-only
+  const h = new URLSearchParams(location.hash.slice(1)); if (!h.has('v')) return null;
+  const num = (k) => Math.max(0, Math.round(Number(h.get(k)) || 0));   // amounts ride in cents
+  return { total: num('v'), sub: num('s'), subDollar: h.get('d') === '1', title: h.get('t') || DEFAULTS.title, subLabel: h.get('l') || DEFAULTS.subLabel, foot: h.get('f') || DEFAULTS.foot };
+})();
+let state = { ...DEFAULTS };
+if (!shared) { try { state = { ...DEFAULTS, ...(JSON.parse(localStorage.getItem(KEY)) || {}) }; } catch (e) { /* a fresh sign */ } }
+if (!Array.isArray(state.wins)) state.wins = [];
+const save = () => { if (shared) return; try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { $('msg').textContent = 'This browser would not save that; it will be gone when the page closes.'; } };
+// AMOUNTS ARE HELD IN CENTS, as whole numbers, so adding them never drifts.
+const total = () => (shared ? shared.total : state.wins.reduce((a, w) => a + w.amount, 0));
+const subIsDollars = () => (shared ? shared.subDollar : state.subMode === 'latest' || state.subMode === 'avg' || (state.subMode === 'custom' && !!state.subDollar));
+const subValue = () => {
+  if (shared) return shared.sub;
+  if (state.subMode === 'latest') return state.wins.length ? state.wins[state.wins.length - 1].amount : 0;
+  if (state.subMode === 'avg') return state.wins.length ? Math.round(total() / state.wins.length) : 0;
+  if (state.subMode === 'custom') { const x = Math.max(0, Number(state.subCustom) || 0); return state.subDollar ? Math.round(x * 100) : Math.round(x); }
+  return state.wins.length;
+};
+const money = (c) => `$${(Math.round(c) / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+/** "90k", "$90,000", "1.2m", "1,250.50" → cents. null when it is not an amount. */
+function parseAmount(text) {
+  const m = /^\s*\$?\s*([0-9][0-9,]*(?:\.[0-9]+)?|\.[0-9]+)\s*([kmb])?\s*$/i.exec(String(text || ''));
+  if (!m) return null;
+  const n = Number(m[1].replace(/,/g, '')) * ({ k: 1e3, m: 1e6, b: 1e9 }[(m[2] || '').toLowerCase()] || 1);
+  return Number.isFinite(n) && n > 0 && n < 1e11 ? Math.round(n * 100) : null;
+}
+
+/* ---------- the sign ---------- */
+let mainRow, subRow; let shownMain = 0, shownSub = 0; let raf = 0;
+function layout() {
+  const mainDigits = Math.max(9, wholeDigits(total(), true), wholeDigits(shownMain, true));
+  const subDigits = Math.max(subIsDollars() ? 6 : 3, wholeDigits(subValue(), subIsDollars()), wholeDigits(shownSub, subIsDollars()));
+  if (!mainRow || mainRow.digits !== mainDigits) mainRow = buildRow($('main'), mainDigits, true, true);
+  if (!subRow || subRow.digits !== subDigits || subRow.dollar !== subIsDollars()) { if (subRow && subRow.dollar !== subIsDollars()) shownSub = 0; subRow = buildRow($('sub'), subDigits, subIsDollars(), subIsDollars()); }
+  const cs = getComputedStyle($('sign')); const inner = $('sign').clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+  document.documentElement.style.setProperty('--p', `${Math.max(2.2, Math.min(15, inner / mainRow.units)).toFixed(2)}px`);
+  setRow(mainRow, shownMain); setRow(subRow, shownSub);
+}
+/* the click of a relay: a very short burst, only after the person has done something on the page */
+let audio = null;
+function click(loud) {
+  if (state.mute || shared) return;
+  try {
+    audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+    const t = audio.currentTime; const o = audio.createOscillator(); const g = audio.createGain();
+    o.type = 'square'; o.frequency.setValueAtTime(loud ? 180 : 1400, t); o.frequency.exponentialRampToValueAtTime(loud ? 60 : 500, t + 0.03);
+    g.gain.setValueAtTime(loud ? 0.12 : 0.035, t); g.gain.exponentialRampToValueAtTime(0.0001, t + (loud ? 0.12 : 0.03));
+    o.connect(g).connect(audio.destination); o.start(t); o.stop(t + 0.14);
+  } catch (e) { /* no sound here */ }
+}
+/** Count both numbers to where they should be. The bulbs step; nothing fades. */
+function run({ instant = false } = {}) {
+  cancelAnimationFrame(raf); layout();
+  const toMain = total(), toSub = subValue(); const fromMain = shownMain, fromSub = shownSub;
+  const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (instant || still || (fromMain === toMain && fromSub === toSub)) { shownMain = toMain; shownSub = toSub; setRow(mainRow, toMain); setRow(subRow, toSub); return; }
+  const span = Math.abs(toMain - fromMain) || Math.abs(toSub - fromSub);
+  const ms = Math.max(1400, Math.min(4200, 900 + Math.log10(span + 1) * 520)); const t0 = performance.now(); let lastTick = 0;
+  const step = (now) => {
+    const k = Math.min(1, (now - t0) / ms); const e = 1 - Math.pow(1 - k, 3);
+    shownMain = k === 1 ? toMain : Math.round(fromMain + (toMain - fromMain) * e);
+    shownSub = k === 1 ? toSub : Math.round(fromSub + (toSub - fromSub) * e);
+    const changed = setRow(mainRow, shownMain) + setRow(subRow, shownSub);
+    if (changed && now - lastTick > 45) { click(false); lastTick = now; }
+    if (k < 1) raf = requestAnimationFrame(step); else { click(true); $('said').textContent = `${words('title')} ${money(toMain)}. ${words('sublabel')}: ${subIsDollars() ? money(toSub) : toSub}.`; }
+  };
+  raf = requestAnimationFrame(step);
+}
+const words = (id) => $(id).textContent.trim();
+
+/* ---------- the desk ---------- */
+function paintWins() {
+  const ul = $('wins'); ul.textContent = '';
+  if (!state.wins.length) { const li = document.createElement('li'); li.className = 'empty'; li.textContent = 'None yet. Add the first one above.'; ul.appendChild(li); return; }
+  for (const w of [...state.wins].reverse()) {
+    const li = document.createElement('li');
+    const amt = document.createElement('span'); amt.className = 'amt'; amt.textContent = money(w.amount);
+    const note = document.createElement('span'); note.className = 'note'; note.textContent = w.note || ''; note.title = w.note || '';
+    const when = document.createElement('span'); when.className = 'when'; when.textContent = new Date(w.at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+    const del = document.createElement('button'); del.type = 'button'; del.className = 'quiet'; del.textContent = 'Remove'; del.title = 'Take this win off the sign';
+    del.onclick = () => { state.wins = state.wins.filter((x) => x.id !== w.id); save(); paintWins(); $('msg').textContent = `Removed ${money(w.amount)}. The sign now reads ${money(total())}.`; run(); };
+    li.append(amt, note, when, del); ul.appendChild(li);
+  }
+}
+function paintSettings() {
+  $('submode').value = state.subMode; $('customBox').hidden = state.subMode !== 'custom';
+  $('subval').value = state.subCustom ? String(state.subCustom) : ''; $('subdollar').checked = !!state.subDollar;
+  $('sound').textContent = state.mute ? 'Sound is off' : 'Sound is on';
+}
+$('add').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const n = parseAmount($('amt').value);
+  if (n == null) { $('msg').textContent = 'That is not an amount. Try 90k, 90,000.00 or 1.2m.'; $('amt').focus(); return; }
+  state.wins.push({ id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, amount: n, note: $('note').value.trim(), at: new Date().toISOString() });
+  save(); paintWins(); $('amt').value = ''; $('note').value = '';
+  $('msg').textContent = `Added ${money(n)}. The sign now reads ${money(total())}.`;
+  run();
+});
+$('submode').onchange = () => { state.subMode = $('submode').value; if (state.subLabelAuto !== false) autoSubLabel(); save(); paintSettings(); run(); };
+$('subval').oninput = () => { const c = parseAmount($('subval').value); state.subCustom = c == null ? 0 : c / 100; save(); run(); };
+$('subdollar').onchange = () => { state.subDollar = $('subdollar').checked; save(); run(); };
+$('sound').onclick = () => { state.mute = !state.mute; save(); paintSettings(); if (!state.mute) click(true); };
+/* the label follows the kind of number until the person writes their own */
+const AUTO_LABELS = { latest: 'LATEST Recovery', count: 'Wins so far', avg: 'AVERAGE Recovery', custom: 'People helped' };
+function autoSubLabel() { state.subLabel = AUTO_LABELS[state.subMode]; $('sublabel').textContent = state.subLabel; }
+
+for (const [id, key] of [['title', 'title'], ['sublabel', 'subLabel'], ['foot', 'foot']]) {
+  const el = $(id);
+  el.textContent = shared ? shared[key] : state[key];
+  if (shared) { el.contentEditable = 'false'; continue; }
+  el.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); el.blur(); } });
+  el.addEventListener('paste', (e) => { e.preventDefault(); document.execCommand('insertText', false, (e.clipboardData || window.clipboardData).getData('text').replace(/\s+/g, ' ')); });
+  el.addEventListener('blur', () => {
+    const text = el.textContent.replace(/\s+/g, ' ').trim().slice(0, 60) || DEFAULTS[key];
+    el.textContent = text; if (key === 'subLabel' && text !== state.subLabel) state.subLabelAuto = false;
+    state[key] = text; save(); if (key === 'foot') document.title = text;
+  });
+}
+document.title = words('foot');
+
+$('show').onclick = () => { document.body.classList.add('show'); layout(); };
+$('leave').onclick = () => { if (shared) { location.href = location.pathname; return; } document.body.classList.remove('show'); layout(); };
+$('link').onclick = async () => {
+  const q = new URLSearchParams({ v: String(total()), s: String(subValue()), d: subIsDollars() ? '1' : '0', t: state.title, l: state.subLabel, f: state.foot });
+  const url = `${location.origin}${location.pathname}#${q}`;
+  try { await navigator.clipboard.writeText(url); $('msg').textContent = 'Link copied. It shows the sign as it is right now.'; }
+  catch (e) { $('msg').textContent = url; }
+};
+window.addEventListener('resize', layout);
+window.addEventListener('hashchange', () => location.reload());   // a shared link pasted over an open clock
+
+if (shared) { document.body.classList.add('show'); $('leave').textContent = 'Make a clock of your own'; }
+else { paintWins(); paintSettings(); }
+shownMain = 0; shownSub = 0; layout();
+setTimeout(() => run(), 350);   // it counts up from nothing when the page opens, as a sign being switched on
+</script>
+</body>
+</html>
