@@ -109,7 +109,7 @@
     <div class="panel">
       <h2>Add a win</h2>
       <form id="add" class="addrow" autocomplete="off">
-        <div><label for="amt">Amount</label><input type="text" id="amt" inputmode="decimal" placeholder="90k or 90,000.00" required></div>
+        <div><label for="amt">Latest win</label><input type="text" id="amt" inputmode="decimal" placeholder="90k or 90,000.00" required></div>
         <div><label for="note">What it was (optional)</label><input type="text" id="note" placeholder="Who or what it was for" maxlength="120"></div>
         <button class="go" type="submit">Add it</button>
       </form>
@@ -133,7 +133,10 @@
         <input type="text" id="subval" inputmode="decimal" placeholder="12">
         <label style="display:flex;gap:8px;align-items:center;margin-top:10px"><input type="checkbox" id="subdollar"> Show it as dollars</label>
       </div>
-      <label for="pace">Rate between wins, per week (0 stops the ticking)</label>
+      <label for="start">Starting at</label>
+      <input type="text" id="start" inputmode="decimal" placeholder="0">
+      <p class="hint" style="margin-top:6px">What had been won before this clock. The wins you enter add onto it.</p>
+      <label for="pace">Increment rate, per week (0 stops the ticking)</label>
       <input type="text" id="pace" inputmode="decimal" placeholder="20k">
       <p class="hint" style="margin-top:6px">The top number ticks up at this rate after each win. Entering the next win trues it up to the recorded total.</p>
       <div class="tools">
@@ -152,7 +155,7 @@
  * no server: the state lives in localStorage, and a shared link carries its own state in the address. */
 const $ = (id) => document.getElementById(id);
 const KEY = 'severance-clock.v1';
-const DEFAULTS = { title: 'Increased severance:', subLabel: 'LATEST Recovery', foot: "Dan's Increased Severance Clock", wins: [], subMode: 'latest', subCustom: 0, subDollar: false, mute: false, pace: 20000 };
+const DEFAULTS = { title: 'Increased severance:', subLabel: 'LATEST Recovery', foot: "Dan's Increased Severance Clock", wins: [], subMode: 'latest', subCustom: 0, subDollar: false, mute: false, pace: 20000, start: 0, startAt: 0 };
 
 /* ---------- 5 x 7 bulbs ---------- */
 const FONT = {
@@ -239,7 +242,10 @@ if (!shared) { try { state = { ...DEFAULTS, ...(JSON.parse(localStorage.getItem(
 if (!Array.isArray(state.wins)) state.wins = [];
 const save = () => { if (shared) return; try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { $('msg').textContent = 'This browser would not save that; it will be gone when the page closes.'; } };
 // AMOUNTS ARE HELD IN CENTS, as whole numbers, so adding them never drifts.
-const total = () => (shared ? shared.total : state.wins.reduce((a, w) => a + w.amount, 0));
+// "Starting at" is what had been won before this clock was set up; the wins entered here add onto it.
+const startOf = () => Math.max(0, Math.round(Number(state.start) || 0));
+const wonHere = () => state.wins.reduce((a, w) => a + w.amount, 0);
+const total = () => (shared ? shared.total : startOf() + wonHere());
 /* BETWEEN WINS THE SIGN KEEPS TICKING, THEN TRUES UP (Sean, 5 Oct 2026: "the upper clock should keep ticking at a
  * sensible rate, assuming some win rate per week like 20k" · "provide a field for rate, like 20k per week then true
  * up"). The recorded wins are the truth and stay in the list. Between wins the sign shows them plus an estimate: the
@@ -247,14 +253,14 @@ const total = () => (shared ? shared.total : state.wins.reduce((a, w) => a + w.a
  * to the recorded total, whichever way that is, and the estimate starts again from there. Rate 0 stops the ticking. */
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 const paceOf = () => Math.max(0, Number(shared ? shared.pace : state.pace) || 0);
-const lastWinAt = () => (shared ? shared.lastAt : (state.wins.length ? new Date(state.wins[state.wins.length - 1].at).getTime() : 0));
+const lastWinAt = () => (shared ? shared.lastAt : (state.wins.length ? new Date(state.wins[state.wins.length - 1].at).getTime() : (startOf() ? Number(state.startAt) || 0 : 0)));   // no wins yet: the estimate runs from when the starting amount was set
 const ahead = (now = Date.now()) => { const t = lastWinAt(); return t && now > t ? Math.round(paceOf() * 100 * (now - t) / WEEK_MS) : 0; };
 const signTotal = (now = Date.now()) => total() + ahead(now);
 const subIsDollars = () => (shared ? shared.subDollar : state.subMode === 'latest' || state.subMode === 'avg' || (state.subMode === 'custom' && !!state.subDollar));
 const subValue = () => {
   if (shared) return shared.sub;
   if (state.subMode === 'latest') return state.wins.length ? state.wins[state.wins.length - 1].amount : 0;
-  if (state.subMode === 'avg') return state.wins.length ? Math.round(total() / state.wins.length) : 0;
+  if (state.subMode === 'avg') return state.wins.length ? Math.round(wonHere() / state.wins.length) : 0;
   if (state.subMode === 'custom') { const x = Math.max(0, Number(state.subCustom) || 0); return state.subDollar ? Math.round(x * 100) : Math.round(x); }
   return state.wins.length;
 };
@@ -326,12 +332,13 @@ function paintWins() {
 }
 /** What is recorded and what is estimate, said plainly under the form. */
 function paintTruth() {
-  const n = state.wins.length; const a = signTotal() - total();
-  $('truth').textContent = !n ? 'The sign starts ticking once the first win is in.'
-    : `Recorded: ${money(total())} in ${n} win${n === 1 ? '' : 's'}.${a > 0 ? ` The sign is about ${money(a)} ahead of that: an estimate, at ${money(paceOf() * 100)} a week since the last win. The next win trues it up.` : ''}`;
+  const n = state.wins.length; const a = signTotal() - total(); const st = startOf();
+  $('truth').textContent = !n && !st ? 'The sign starts ticking once there is a starting amount or a first win.'
+    : `Recorded: ${money(total())}${st ? `, starting at ${money(st)}` : ''}${n ? `${st ? ' plus' : ' in'} ${n} win${n === 1 ? '' : 's'}` : ''}.${a > 0 ? ` The sign is about ${money(a)} ahead of that: an estimate, at ${money(paceOf() * 100)} a week since the last win. The next win trues it up.` : ''}`;
 }
 function paintSettings() {
   $('pace').value = paceOf() ? paceOf().toLocaleString('en-US') : '0';   // also takes 20k
+  $('start').value = startOf() ? (startOf() / 100).toLocaleString('en-US', { minimumFractionDigits: 2 }) : '';
   $('submode').value = state.subMode; $('customBox').hidden = state.subMode !== 'custom';
   $('subval').value = state.subCustom ? String(state.subCustom) : ''; $('subdollar').checked = !!state.subDollar;
   $('sound').textContent = state.mute ? 'Sound is off' : 'Sound is on';
@@ -347,6 +354,7 @@ $('add').addEventListener('submit', (e) => {
 });
 $('submode').onchange = () => { state.subMode = $('submode').value; if (state.subLabelAuto !== false) autoSubLabel(); save(); paintSettings(); run(); };
 $('subval').oninput = () => { const c = parseAmount($('subval').value); state.subCustom = c == null ? 0 : c / 100; save(); run(); };
+$('start').onchange = () => { const t = $('start').value.trim(); const c = !t || /^0*(\.0*)?$/.test(t) ? 0 : parseAmount(t); if (c == null) { paintSettings(); return; } state.start = c; state.startAt = Date.now(); save(); paintSettings(); paintTruth(); run(); };
 $('pace').onchange = () => { const t = $('pace').value.trim(); const c = /^0*(\.0*)?$/.test(t) ? 0 : parseAmount(t); if (c == null) { paintSettings(); return; } state.pace = c / 100; save(); paintSettings(); paintTruth(); };
 $('subdollar').onchange = () => { state.subDollar = $('subdollar').checked; save(); run(); };
 $('sound').onclick = () => { state.mute = !state.mute; save(); paintSettings(); if (!state.mute) click(true); };
