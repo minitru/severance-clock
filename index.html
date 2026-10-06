@@ -173,7 +173,9 @@
  * no server: the state lives in localStorage, and a shared link carries its own state in the address. */
 const $ = (id) => document.getElementById(id);
 const KEY = 'severance-clock.v1';
-const DEFAULTS = { title: 'Increased severance:', subLabel: 'LATEST <i>Recovery</i>', foot: "Dan's Increased Severance Clock", wins: [], subMode: 'latest', subCustom: 0, subDollar: false, mute: false, pace: 20000, start: 0, startAt: 0 };
+const DEFAULTS = { title: 'Increased severance:', subLabel: 'LATEST <i>Recovery</i>', foot: "Dan's Increased Severance Clock", wins: [], subMode: 'latest', subCustom: 0, subDollar: false, mute: false, pace: 20000, start: 0, startAt: 0,
+  // the sheet this clock reads its wins from, unless the person points it at another or clears the field
+  sheet: 'https://docs.google.com/spreadsheets/d/12DhKdbHvgIkvt2DRDi4DZqWFdzjWH4sgs8wJMYhGLQg/edit' };
 
 /* ---------- 5 x 7 bulbs ---------- */
 const FONT = {
@@ -266,6 +268,7 @@ if (live) {
     pace: linkNum('r') / 100, start: linkNum('st'), startAt: linkNum('sa'), subMode: ['latest', 'count', 'avg', 'custom'].includes(LINK.get('m')) ? LINK.get('m') : 'latest', subCustom: Number(LINK.get('sc')) || 0, subDollar: LINK.get('sd') === '1', mute: true };
 } else if (!shared) { try { state = { ...DEFAULTS, ...(JSON.parse(localStorage.getItem(KEY)) || {}) }; } catch (e) { /* a fresh sign */ } }
 if (!Array.isArray(state.wins)) state.wins = [];
+if (!viewOnly && state.sheet && state.wins.length && !state.wins[0].fromSheet && !state.localWins) state.localWins = state.wins;   // wins typed here before the sheet: set aside, not lost
 const save = () => { if (viewOnly) return; try { localStorage.setItem(KEY, JSON.stringify(state.sheet ? { ...state, wins: [] } : state)); } catch (e) { $('msg').textContent = 'This browser would not save that; it will be gone when the page closes.'; } };
 // AMOUNTS ARE HELD IN CENTS, as whole numbers, so adding them never drifts.
 // "Starting at" is what had been won before this clock was set up; the wins entered here add onto it.
