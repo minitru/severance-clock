@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The sign on a web page: an example</title>
+<style>
+  body { margin: 0; background: #f6f4ef; color: #23211d; font: 17px/1.6 Georgia, "Times New Roman", serif; }
+  main { max-width: 720px; margin: 0 auto; padding: 40px 20px 80px; }
+  h1 { font-size: 30px; line-height: 1.2; margin: 0 0 6px; }
+  .by { color: #6d675c; font: 14px/1.4 -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; margin-bottom: 26px; }
+  figure { margin: 28px 0; }
+  figcaption { color: #6d675c; font: 13.5px/1.4 -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; margin-top: 8px; }
+  pre { background: #1d1b18; color: #f1ece1; padding: 14px 16px; border-radius: 8px; overflow-x: auto; font: 13px/1.5 ui-monospace, Menlo, Consolas, monospace; white-space: pre-wrap; word-break: break-all; }
+  a { color: #8a4b08; }
+</style>
+</head>
+<body>
+<main>
+  <h1>This is somebody's web page</h1>
+  <div class="by">An example of the sign embedded in ordinary content. The numbers below are made up.</div>
+  <p>A paragraph of the page's own writing sits above the sign. The sign is one <code>&lt;iframe&gt;</code> tag pasted
+     into the page; it takes the full width of the column and keeps its two-to-one shape on a phone or a desktop.</p>
+  <figure>
+    <iframe src="./#v=132456789&amp;r=2000000&amp;a=1791150000000&amp;s=9000000&amp;d=1&amp;t=Increased+severance%3A&amp;l=LATEST+Recovery&amp;f=Dan%27s+Increased+Severance+Clock&amp;embed=1"
+            title="Dan's Increased Severance Clock" style="width:100%;aspect-ratio:2/1;border:0" loading="lazy"></iframe>
+    <figcaption>The top number keeps ticking at the rate carried in the link.</figcaption>
+  </figure>
+  <p>And the page carries on underneath. Nothing else is needed: no script on the host page, no account.</p>
+  <p>The tag comes from the <strong>Copy embed code</strong> button on <a href="./">the clock</a>, and looks like this:</p>
+  <pre>&lt;iframe src="https://minitru.github.io/severance-clock/#v=…&amp;embed=1"
+        title="Dan's Increased Severance Clock"
+        style="width:100%;aspect-ratio:2/1;border:0" loading="lazy"&gt;&lt;/iframe&gt;</pre>
+  <p>It shows the sign as it was when the code was copied. After a new win, copy the code again and replace the tag.</p>
+</main>
+</body>
+</html>
