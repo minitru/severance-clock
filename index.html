@@ -40,12 +40,10 @@
     font-family: "Times New Roman", Times, Georgia, serif; font-weight: 700; color: var(--ink); letter-spacing: .04em;
     text-shadow: 0 2px 0 rgba(0,0,0,.55), 0 0 18px rgba(0,0,0,.5); line-height: 1.05; outline: none; border-radius: 4px;
   }
-  .lettering[contenteditable=true]:hover { background: rgba(255,255,255,.08); cursor: text; }
-  .lettering[contenteditable=true]:focus { background: rgba(0,0,0,.35); box-shadow: 0 0 0 2px var(--amber); }
   #title { font-size: max(18px, 5.6cqw); text-transform: uppercase; text-align: center; margin: 0 0 calc(var(--p) * 1.4); }
   #foot { font-size: max(15px, 4.5cqw); text-transform: uppercase; text-align: center; margin: calc(var(--p) * 1.6) 0 0; }
   .subrow { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: calc(var(--p) * 1.2); margin-top: calc(var(--p) * 1.6); }
-  #sublabel { font-size: max(15px, 4cqw); font-style: italic; flex: 1 1 auto; min-width: 6ch; }
+  #sublabel { font-size: max(15px, 4cqw); flex: 1 1 auto; min-width: 6ch; }
 
   /* ---------- bulbs ---------- */
   .row { display: flex; gap: calc(var(--p) * .5); justify-content: center; }
@@ -102,13 +100,13 @@
 <div class="wrap">
   <section class="sign" id="sign" aria-label="The clock">
     <div class="bills" id="bills" aria-hidden="true"></div>
-    <div class="lettering" id="title" contenteditable="true" spellcheck="false" aria-label="Title. Click to change it."></div>
+    <div class="lettering" id="title"></div>
     <div class="row" id="main" aria-hidden="true"></div>
     <div class="subrow">
-      <div class="lettering" id="sublabel" contenteditable="true" spellcheck="false" aria-label="The label beside the second number. Click to change it."></div>
+      <div class="lettering" id="sublabel"></div>
       <div class="row" id="sub" aria-hidden="true"></div>
     </div>
-    <div class="lettering" id="foot" contenteditable="true" spellcheck="false" aria-label="The name of the clock. Click to change it."></div>
+    <div class="lettering" id="foot"></div>
   </section>
   <p class="sr" id="said" aria-live="polite"></p>
   <button type="button" id="leave">Back to the desk</button>
@@ -128,7 +126,13 @@
     </div>
     <div class="panel">
       <h2>The sign</h2>
-      <p class="hint" style="margin-top:0">Click any lettering on the sign to change it: the title, the label beside the second number, and the name at the bottom.</p>
+      <label for="tTitle" style="margin-top:0">Top line</label>
+      <input type="text" id="tTitle" maxlength="80" spellcheck="false">
+      <label for="tSub">Line beside the second number</label>
+      <input type="text" id="tSub" maxlength="80" spellcheck="false">
+      <label for="tFoot">Bottom line</label>
+      <input type="text" id="tFoot" maxlength="80" spellcheck="false">
+      <p class="hint" style="margin-top:6px">For italics or bold, wrap words in &lt;i&gt;…&lt;/i&gt; or &lt;b&gt;…&lt;/b&gt;. Nothing else is taken as HTML.</p>
       <label for="submode">The second number shows</label>
       <select id="submode">
         <option value="latest">The latest win</option>
@@ -164,7 +168,7 @@
  * no server: the state lives in localStorage, and a shared link carries its own state in the address. */
 const $ = (id) => document.getElementById(id);
 const KEY = 'severance-clock.v1';
-const DEFAULTS = { title: 'Increased severance:', subLabel: 'LATEST Recovery', foot: "Dan's Increased Severance Clock", wins: [], subMode: 'latest', subCustom: 0, subDollar: false, mute: false, pace: 20000, start: 0, startAt: 0 };
+const DEFAULTS = { title: 'Increased severance:', subLabel: 'LATEST <i>Recovery</i>', foot: "Dan's Increased Severance Clock", wins: [], subMode: 'latest', subCustom: 0, subDollar: false, mute: false, pace: 20000, start: 0, startAt: 0 };
 
 /* ---------- 5 x 7 bulbs ---------- */
 const FONT = {
@@ -377,22 +381,31 @@ $('pace').onchange = () => { const t = $('pace').value.trim(); const c = /^0*(\.
 $('subdollar').onchange = () => { state.subDollar = $('subdollar').checked; save(); run(); };
 $('sound').onclick = () => { state.mute = !state.mute; save(); paintSettings(); if (!state.mute) click(true); };
 /* the label follows the kind of number until the person writes their own */
-const AUTO_LABELS = { latest: 'LATEST Recovery', count: 'Wins so far', avg: 'AVERAGE Recovery', custom: 'People helped' };
-function autoSubLabel() { state.subLabel = AUTO_LABELS[state.subMode]; $('sublabel').textContent = state.subLabel; }
+const AUTO_LABELS = { latest: 'LATEST <i>Recovery</i>', count: 'Wins so far', avg: 'AVERAGE <i>Recovery</i>', custom: 'People helped' };
+function autoSubLabel() { state.subLabel = AUTO_LABELS[state.subMode]; paintLettering(); }
 
-for (const [id, key] of [['title', 'title'], ['sublabel', 'subLabel'], ['foot', 'foot']]) {
-  const el = $(id);
-  el.textContent = shared ? shared[key] : state[key];
-  if (shared) { el.contentEditable = 'false'; continue; }
-  el.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); el.blur(); } });
-  el.addEventListener('paste', (e) => { e.preventDefault(); document.execCommand('insertText', false, (e.clipboardData || window.clipboardData).getData('text').replace(/\s+/g, ' ')); });
-  el.addEventListener('blur', () => {
-    const text = el.textContent.replace(/\s+/g, ' ').trim().slice(0, 60) || DEFAULTS[key];
-    el.textContent = text; if (key === 'subLabel' && text !== state.subLabel) state.subLabelAuto = false;
-    state[key] = text; save(); if (key === 'foot') document.title = text;
-  });
+/* THE THREE LINES OF LETTERING are fields in the settings (Sean, 5 Oct 2026: "add the 3 text lines … as part of the
+ * settings" · "allow HTML for italics"). The text is escaped whole, and then only <i>, <em>, <b> and <strong>, with
+ * no attributes, are let back through; so a line typed here, or carried in a shared link, can never run a script. */
+const LINES = [['title', 'title', 'tTitle'], ['sublabel', 'subLabel', 'tSub'], ['foot', 'foot', 'tFoot']];
+const safeLine = (t) => String(t == null ? '' : t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+  .replace(/&lt;(\/?)(i|em|b|strong)&gt;/gi, (m, slash, tag) => `<${slash}${tag.toLowerCase()}>`);
+function paintLettering() {
+  for (const [id, key, field] of LINES) {
+    $(id).innerHTML = safeLine(shared ? shared[key] : state[key]);
+    if (!shared && document.activeElement !== $(field)) $(field).value = state[key];
+  }
+  document.title = words('foot');
 }
-document.title = words('foot');
+if (!shared && state.subLabel === 'LATEST Recovery') state.subLabel = DEFAULTS.subLabel;   // a clock saved before italics were allowed
+for (const [, key, field] of LINES) {
+  $(field).addEventListener('input', () => {
+    state[key] = $(field).value.replace(/\s+/g, ' ').slice(0, 80); if (key === 'subLabel') state.subLabelAuto = false;
+    save(); paintLettering(); layout();
+  });
+  $(field).addEventListener('blur', () => { if (!state[key].trim()) { state[key] = DEFAULTS[key]; save(); } paintLettering(); });
+}
+paintLettering();
 
 $('show').onclick = () => { document.body.classList.add('show'); layout(); };
 $('leave').onclick = () => { if (shared) { location.href = location.pathname; return; } document.body.classList.remove('show'); layout(); };

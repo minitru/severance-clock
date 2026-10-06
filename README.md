@@ -11,9 +11,9 @@ sum of the wins. Add a win ("90k", "90,000.00", "1.2m") and the clock counts up 
   number is the recorded wins plus an estimate: the rate times the time since the last win. Entering the next
   win trues the sign up to the recorded total. The list under the sign is the record, and says how far ahead
   the sign is.
-- **Change the words** by clicking them on the sign: the title, the label beside the second number, and the
-  name at the bottom.
-- **The second number** can be the latest win, how many wins, the average win, or a number you type.
+- **Change the words** in the settings: the top line, the line beside the second number, and the bottom line.
+  `<i>…</i>` and `<b>…</b>` are allowed for italics and bold; nothing else is taken as HTML.
+- **The second number** changes at once and blinks; it can be the latest win, how many wins, the average win, or a number you type.
 - **Show only the sign** hides everything else, for a screen on the wall.
 - **Copy a link to this sign** gives a link that shows the sign as it is now, read-only, to anyone.
 - **Copy embed code** gives an `<iframe>` snippet that puts the sign, and nothing else, on another web page.
