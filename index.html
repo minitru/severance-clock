@@ -55,6 +55,7 @@
   .cell.bare { background: none; box-shadow: none; }
   .cell i { width: calc(var(--p) * .8); height: calc(var(--p) * .8); margin: auto; border-radius: 50%; background: #2b1a0b; }
   .cell.bare i { background: transparent; }
+  .row.dark .cell i.on { background: #2b1a0b; box-shadow: none; }   /* the off half of a blink */
   .cell i.on { background: radial-gradient(circle at 45% 40%, #fff6cf 0, #ffc34a 38%, #ff7e0a 100%); box-shadow: 0 0 calc(var(--p) * .7) rgba(255,140,10,.95), 0 0 calc(var(--p) * 1.6) rgba(255,110,0,.35); }
 
   /* ---------- the desk under the sign ---------- */
@@ -305,18 +306,27 @@ function click(loud) {
   } catch (e) { /* no sound here */ }
 }
 /** Count both numbers to where they should be. The bulbs step; nothing fades. */
+/* THE SECOND NUMBER DOES NOT COUNT (Sean, 5 Oct 2026: "latest recovery shouldn't go up or down, just flash when it
+ * changes"). It is a fact, not a running total: it changes at once and its bulbs blink a few times. */
+let flashTimer = 0;
+function flashSub() {
+  clearTimeout(flashTimer); let n = 0; const el = $('sub');
+  const blink = () => { el.classList.toggle('dark', n % 2 === 0); n += 1; if (n < 8) flashTimer = setTimeout(blink, 170); else el.classList.remove('dark'); };
+  blink();
+}
 function run({ instant = false } = {}) {
   cancelAnimationFrame(raf); layout();
-  const toMain = signTotal(), toSub = subValue(); const fromMain = shownMain, fromSub = shownSub; counting = false;
+  const toMain = signTotal(), toSub = subValue(); const fromMain = shownMain; counting = false;
   const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (instant || still || (fromMain === toMain && fromSub === toSub)) { shownMain = toMain; shownSub = toSub; setRow(mainRow, toMain); setRow(subRow, toSub); return; }
-  const span = Math.abs(toMain - fromMain) || Math.abs(toSub - fromSub); counting = true;
-  const ms = Math.max(1400, Math.min(4200, 900 + Math.log10(span + 1) * 520)); const t0 = performance.now(); let lastTick = 0;
+  const subChanged = toSub !== shownSub; shownSub = toSub; setRow(subRow, toSub);
+  if (subChanged && !instant && !still) flashSub();
+  if (instant || still || fromMain === toMain) { shownMain = toMain; setRow(mainRow, toMain); return; }
+  counting = true;
+  const ms = Math.max(1400, Math.min(4200, 900 + Math.log10(Math.abs(toMain - fromMain) + 1) * 520)); const t0 = performance.now(); let lastTick = 0;
   const step = (now) => {
     const k = Math.min(1, (now - t0) / ms); const e = 1 - Math.pow(1 - k, 3);
     shownMain = k === 1 ? toMain : Math.round(fromMain + (toMain - fromMain) * e);
-    shownSub = k === 1 ? toSub : Math.round(fromSub + (toSub - fromSub) * e);
-    const changed = setRow(mainRow, shownMain) + setRow(subRow, shownSub);
+    const changed = setRow(mainRow, shownMain);
     if (changed && now - lastTick > 45) { click(false); lastTick = now; }
     if (k < 1) raf = requestAnimationFrame(step); else { counting = false; click(true); $('said').textContent = `${words('title')} ${money(toMain)}. ${words('sublabel')}: ${subIsDollars() ? money(toSub) : toSub}.`; }
   };
