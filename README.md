@@ -17,8 +17,27 @@ sum of the wins. Add a win ("90k", "90,000.00", "1.2m") and the clock counts up 
 - **Show only the sign** hides everything else, for a screen on the wall.
 - **Copy a link to this sign** gives a link that shows the sign as it is now, read-only, to anyone.
 - **Copy embed code** gives an `<iframe>` snippet that puts the sign, and nothing else, on another web page.
-  Like the link, it is the sign as it was when copied: it keeps ticking at the rate, but a new win needs a new
-  copy, because the wins live in the browser that entered them.
+
+## Keeping it up to date: a Google Sheet
+
+Typed-in wins live only in the browser that typed them, so a sign embedded on a website would be a snapshot.
+Connect a Google Sheet and a new win is a new row; every copy of the sign, embedded ones too, follows within a
+minute. The sheet is read, never written.
+
+1. Make a Google Sheet with three columns: **Date**, **Amount**, **Note**. One row per win.
+   Amounts can be `90000`, `$90,000.00` or `90k`.
+2. In the sheet: **File → Share → Publish to web**, choose the sheet, publish, and copy the link.
+3. On the clock, paste the link into **Google Sheet of wins**. The list fills from the sheet.
+4. Set the three lines, **Starting at** and the **Increment rate** as you want them.
+5. Press **Copy embed code** and paste it into the website once (below). After that, only the sheet changes.
+
+Anyone with the published link can read the sheet, so put in it only what may be public. The Note column is
+shown on the clock's own page, not on the sign.
+
+## Putting it on a Squarespace page
+
+Edit the page, add a block, choose **Code**, and paste the embed code with the type set to HTML. Squarespace
+allows the Code block on its paid plans above the entry one. The sign takes the width of its column.
 
 One file, `index.html`. No libraries, no server, no tracking. The wins are kept in the browser that entered
 them (localStorage); a copied link carries its numbers and words in the link itself.
