@@ -44,3 +44,7 @@ them (localStorage); a copied link carries its numbers and words in the link its
 
 The dollar bills behind the lettering are public-domain photographs of a United States one-dollar bill, front
 and back, from Wikimedia Commons, loaded from there when the page opens.
+
+## Licence
+
+MIT. See [LICENSE](LICENSE). The dollar-bill photographs are public domain and are not part of this repository.
