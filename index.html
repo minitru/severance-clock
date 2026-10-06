@@ -114,6 +114,7 @@
         <button class="go" type="submit">Add it</button>
       </form>
       <div class="msg" id="msg" role="status"></div>
+      <p class="hint" id="truth" style="margin-top:0"></p>
       <h2 style="margin-top:14px">Wins so far</h2>
       <ul class="wins" id="wins"></ul>
     </div>
@@ -132,6 +133,9 @@
         <input type="text" id="subval" inputmode="decimal" placeholder="12">
         <label style="display:flex;gap:8px;align-items:center;margin-top:10px"><input type="checkbox" id="subdollar"> Show it as dollars</label>
       </div>
+      <label for="pace">Rate between wins, per week (0 stops the ticking)</label>
+      <input type="text" id="pace" inputmode="decimal" placeholder="20k">
+      <p class="hint" style="margin-top:6px">The top number ticks up at this rate after each win. Entering the next win trues it up to the recorded total.</p>
       <div class="tools">
         <button type="button" id="show" title="Hide everything but the sign, for a screen on the wall">Show only the sign</button>
         <button type="button" id="link" title="A link that shows this sign, as it is now, to anyone">Copy a link to this sign</button>
@@ -148,7 +152,7 @@
  * no server: the state lives in localStorage, and a shared link carries its own state in the address. */
 const $ = (id) => document.getElementById(id);
 const KEY = 'severance-clock.v1';
-const DEFAULTS = { title: 'Increased severance:', subLabel: 'LATEST Recovery', foot: "Dan's Increased Severance Clock", wins: [], subMode: 'latest', subCustom: 0, subDollar: false, mute: false };
+const DEFAULTS = { title: 'Increased severance:', subLabel: 'LATEST Recovery', foot: "Dan's Increased Severance Clock", wins: [], subMode: 'latest', subCustom: 0, subDollar: false, mute: false, pace: 20000 };
 
 /* ---------- 5 x 7 bulbs ---------- */
 const FONT = {
@@ -228,7 +232,7 @@ const BILLS = ['https://upload.wikimedia.org/wikipedia/commons/thumb/7/7b/United
 const shared = (() => {   // a link made by "Copy a link": the sign as it was, read-only
   const h = new URLSearchParams(location.hash.slice(1)); if (!h.has('v')) return null;
   const num = (k) => Math.max(0, Math.round(Number(h.get(k)) || 0));   // amounts ride in cents
-  return { total: num('v'), sub: num('s'), subDollar: h.get('d') === '1', title: h.get('t') || DEFAULTS.title, subLabel: h.get('l') || DEFAULTS.subLabel, foot: h.get('f') || DEFAULTS.foot };
+  return { total: num('v'), pace: num('r') / 100, lastAt: num('a'), sub: num('s'), subDollar: h.get('d') === '1', title: h.get('t') || DEFAULTS.title, subLabel: h.get('l') || DEFAULTS.subLabel, foot: h.get('f') || DEFAULTS.foot };
 })();
 let state = { ...DEFAULTS };
 if (!shared) { try { state = { ...DEFAULTS, ...(JSON.parse(localStorage.getItem(KEY)) || {}) }; } catch (e) { /* a fresh sign */ } }
@@ -236,6 +240,16 @@ if (!Array.isArray(state.wins)) state.wins = [];
 const save = () => { if (shared) return; try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { $('msg').textContent = 'This browser would not save that; it will be gone when the page closes.'; } };
 // AMOUNTS ARE HELD IN CENTS, as whole numbers, so adding them never drifts.
 const total = () => (shared ? shared.total : state.wins.reduce((a, w) => a + w.amount, 0));
+/* BETWEEN WINS THE SIGN KEEPS TICKING, THEN TRUES UP (Sean, 5 Oct 2026: "the upper clock should keep ticking at a
+ * sensible rate, assuming some win rate per week like 20k" · "provide a field for rate, like 20k per week then true
+ * up"). The recorded wins are the truth and stay in the list. Between wins the sign shows them plus an estimate: the
+ * rate, in dollars a week, times the time since the last win was entered. Entering a win trues the sign up: it goes
+ * to the recorded total, whichever way that is, and the estimate starts again from there. Rate 0 stops the ticking. */
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+const paceOf = () => Math.max(0, Number(shared ? shared.pace : state.pace) || 0);
+const lastWinAt = () => (shared ? shared.lastAt : (state.wins.length ? new Date(state.wins[state.wins.length - 1].at).getTime() : 0));
+const ahead = (now = Date.now()) => { const t = lastWinAt(); return t && now > t ? Math.round(paceOf() * 100 * (now - t) / WEEK_MS) : 0; };
+const signTotal = (now = Date.now()) => total() + ahead(now);
 const subIsDollars = () => (shared ? shared.subDollar : state.subMode === 'latest' || state.subMode === 'avg' || (state.subMode === 'custom' && !!state.subDollar));
 const subValue = () => {
   if (shared) return shared.sub;
@@ -254,9 +268,9 @@ function parseAmount(text) {
 }
 
 /* ---------- the sign ---------- */
-let mainRow, subRow; let shownMain = 0, shownSub = 0; let raf = 0;
+let mainRow, subRow; let shownMain = 0, shownSub = 0; let raf = 0; let counting = false;
 function layout() {
-  const mainDigits = Math.max(9, wholeDigits(total(), true), wholeDigits(shownMain, true));
+  const mainDigits = Math.max(9, wholeDigits(signTotal(), true), wholeDigits(shownMain, true));
   const subDigits = Math.max(subIsDollars() ? 6 : 3, wholeDigits(subValue(), subIsDollars()), wholeDigits(shownSub, subIsDollars()));
   if (!mainRow || mainRow.digits !== mainDigits) mainRow = buildRow($('main'), mainDigits, true, true);
   if (!subRow || subRow.digits !== subDigits || subRow.dollar !== subIsDollars()) { if (subRow && subRow.dollar !== subIsDollars()) shownSub = 0; subRow = buildRow($('sub'), subDigits, subIsDollars(), subIsDollars()); }
@@ -279,10 +293,10 @@ function click(loud) {
 /** Count both numbers to where they should be. The bulbs step; nothing fades. */
 function run({ instant = false } = {}) {
   cancelAnimationFrame(raf); layout();
-  const toMain = total(), toSub = subValue(); const fromMain = shownMain, fromSub = shownSub;
+  const toMain = signTotal(), toSub = subValue(); const fromMain = shownMain, fromSub = shownSub; counting = false;
   const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (instant || still || (fromMain === toMain && fromSub === toSub)) { shownMain = toMain; shownSub = toSub; setRow(mainRow, toMain); setRow(subRow, toSub); return; }
-  const span = Math.abs(toMain - fromMain) || Math.abs(toSub - fromSub);
+  const span = Math.abs(toMain - fromMain) || Math.abs(toSub - fromSub); counting = true;
   const ms = Math.max(1400, Math.min(4200, 900 + Math.log10(span + 1) * 520)); const t0 = performance.now(); let lastTick = 0;
   const step = (now) => {
     const k = Math.min(1, (now - t0) / ms); const e = 1 - Math.pow(1 - k, 3);
@@ -290,7 +304,7 @@ function run({ instant = false } = {}) {
     shownSub = k === 1 ? toSub : Math.round(fromSub + (toSub - fromSub) * e);
     const changed = setRow(mainRow, shownMain) + setRow(subRow, shownSub);
     if (changed && now - lastTick > 45) { click(false); lastTick = now; }
-    if (k < 1) raf = requestAnimationFrame(step); else { click(true); $('said').textContent = `${words('title')} ${money(toMain)}. ${words('sublabel')}: ${subIsDollars() ? money(toSub) : toSub}.`; }
+    if (k < 1) raf = requestAnimationFrame(step); else { counting = false; click(true); $('said').textContent = `${words('title')} ${money(toMain)}. ${words('sublabel')}: ${subIsDollars() ? money(toSub) : toSub}.`; }
   };
   raf = requestAnimationFrame(step);
 }
@@ -306,11 +320,18 @@ function paintWins() {
     const note = document.createElement('span'); note.className = 'note'; note.textContent = w.note || ''; note.title = w.note || '';
     const when = document.createElement('span'); when.className = 'when'; when.textContent = new Date(w.at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
     const del = document.createElement('button'); del.type = 'button'; del.className = 'quiet'; del.textContent = 'Remove'; del.title = 'Take this win off the sign';
-    del.onclick = () => { state.wins = state.wins.filter((x) => x.id !== w.id); save(); paintWins(); $('msg').textContent = `Removed ${money(w.amount)}. The sign now reads ${money(total())}.`; run(); };
+    del.onclick = () => { state.wins = state.wins.filter((x) => x.id !== w.id); save(); paintWins(); $('msg').textContent = `Removed ${money(w.amount)}. Recorded total ${money(total())}.`; paintTruth(); run(); };
     li.append(amt, note, when, del); ul.appendChild(li);
   }
 }
+/** What is recorded and what is estimate, said plainly under the form. */
+function paintTruth() {
+  const n = state.wins.length; const a = signTotal() - total();
+  $('truth').textContent = !n ? 'The sign starts ticking once the first win is in.'
+    : `Recorded: ${money(total())} in ${n} win${n === 1 ? '' : 's'}.${a > 0 ? ` The sign is about ${money(a)} ahead of that: an estimate, at ${money(paceOf() * 100)} a week since the last win. The next win trues it up.` : ''}`;
+}
 function paintSettings() {
+  $('pace').value = paceOf() ? paceOf().toLocaleString('en-US') : '0';   // also takes 20k
   $('submode').value = state.subMode; $('customBox').hidden = state.subMode !== 'custom';
   $('subval').value = state.subCustom ? String(state.subCustom) : ''; $('subdollar').checked = !!state.subDollar;
   $('sound').textContent = state.mute ? 'Sound is off' : 'Sound is on';
@@ -321,11 +342,12 @@ $('add').addEventListener('submit', (e) => {
   if (n == null) { $('msg').textContent = 'That is not an amount. Try 90k, 90,000.00 or 1.2m.'; $('amt').focus(); return; }
   state.wins.push({ id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, amount: n, note: $('note').value.trim(), at: new Date().toISOString() });
   save(); paintWins(); $('amt').value = ''; $('note').value = '';
-  $('msg').textContent = `Added ${money(n)}. The sign now reads ${money(total())}.`;
+  $('msg').textContent = `Added ${money(n)}. Recorded total ${money(total())}.`; paintTruth();
   run();
 });
 $('submode').onchange = () => { state.subMode = $('submode').value; if (state.subLabelAuto !== false) autoSubLabel(); save(); paintSettings(); run(); };
 $('subval').oninput = () => { const c = parseAmount($('subval').value); state.subCustom = c == null ? 0 : c / 100; save(); run(); };
+$('pace').onchange = () => { const t = $('pace').value.trim(); const c = /^0*(\.0*)?$/.test(t) ? 0 : parseAmount(t); if (c == null) { paintSettings(); return; } state.pace = c / 100; save(); paintSettings(); paintTruth(); };
 $('subdollar').onchange = () => { state.subDollar = $('subdollar').checked; save(); run(); };
 $('sound').onclick = () => { state.mute = !state.mute; save(); paintSettings(); if (!state.mute) click(true); };
 /* the label follows the kind of number until the person writes their own */
@@ -349,7 +371,7 @@ document.title = words('foot');
 $('show').onclick = () => { document.body.classList.add('show'); layout(); };
 $('leave').onclick = () => { if (shared) { location.href = location.pathname; return; } document.body.classList.remove('show'); layout(); };
 $('link').onclick = async () => {
-  const q = new URLSearchParams({ v: String(total()), s: String(subValue()), d: subIsDollars() ? '1' : '0', t: state.title, l: state.subLabel, f: state.foot });
+  const q = new URLSearchParams({ v: String(total()), r: String(Math.round(paceOf() * 100)), a: String(lastWinAt()), s: String(subValue()), d: subIsDollars() ? '1' : '0', t: state.title, l: state.subLabel, f: state.foot });
   const url = `${location.origin}${location.pathname}#${q}`;
   try { await navigator.clipboard.writeText(url); $('msg').textContent = 'Link copied. It shows the sign as it is right now.'; }
   catch (e) { $('msg').textContent = url; }
@@ -358,7 +380,9 @@ window.addEventListener('resize', layout);
 window.addEventListener('hashchange', () => location.reload());   // a shared link pasted over an open clock
 
 if (shared) { document.body.classList.add('show'); $('leave').textContent = 'Make a clock of your own'; }
-else { paintWins(); paintSettings(); }
+else { paintWins(); paintSettings(); paintTruth(); setInterval(paintTruth, 5000); }
+// the tick: four times a second the top number is brought to where the pace puts it; silent, the click is for wins
+setInterval(() => { if (counting || !mainRow) return; const t = signTotal(); if (t === shownMain) return; if (wholeDigits(t, true) > mainRow.digits) { shownMain = t; layout(); return; } shownMain = t; setRow(mainRow, t); }, 250);
 shownMain = 0; shownSub = 0; layout();
 setTimeout(() => run(), 350);   // it counts up from nothing when the page opens, as a sign being switched on
 </script>

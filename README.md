@@ -6,6 +6,10 @@ sum of the wins. Add a win ("90k", "90,000.00", "1.2m") and the clock counts up 
 **Open it:** https://minitru.github.io/severance-clock/
 
 - **Add a win** under the sign. A win can be removed again; the clock counts back down.
+- **Between wins it keeps ticking, then trues up.** Set a rate per week (20k to start; 0 stops it). The top
+  number is the recorded wins plus an estimate: the rate times the time since the last win. Entering the next
+  win trues the sign up to the recorded total. The list under the sign is the record, and says how far ahead
+  the sign is.
 - **Change the words** by clicking them on the sign: the title, the label beside the second number, and the
   name at the bottom.
 - **The second number** can be the latest win, how many wins, the average win, or a number you type.
