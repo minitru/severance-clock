@@ -161,6 +161,7 @@
         <button type="button" id="show" title="Hide everything but the sign, for a screen on the wall">Show only the sign</button>
         <button type="button" id="link" title="A link that shows this sign, as it is now, to anyone">Copy a link to this sign</button>
         <button type="button" id="embed" title="A snippet that puts this sign, as it is now, on another web page">Copy embed code</button>
+        <button type="button" id="banner" title="A picture of this sign, as it is now, in the size LinkedIn wants for a profile background">Download a LinkedIn banner</button>
         <button type="button" id="sound"></button>
       </div>
       <p class="hint">Everything is kept in this browser only. Nothing is sent anywhere. A copied link carries the numbers and words in the link itself.</p>
@@ -512,6 +513,94 @@ $('link').onclick = () => copy(signLink(), state.sheet ? 'Link copied. It reads 
 // the sign is about twice as wide as it is tall; the frame keeps that shape at any width
 $('embed').onclick = () => copy(`<iframe src="${signLink({ embed: '1' }).replace(/&/g, '&amp;')}" title="${words('foot').replace(/"/g, '&quot;')}" style="width:100%;aspect-ratio:2/1;border:0" loading="lazy"></iframe>`,
   state.sheet ? 'Embed code copied. It reads the sheet, so the embedded sign keeps itself up to date.' : 'Embed code copied. It shows the sign as it is right now; copy it again after a new win, or connect a Google Sheet.');
+/* A LINKEDIN BANNER (Sean, 7 Oct 2026: "a button that downloads a linkedin compatible banner"). LinkedIn's profile
+ * background is 1584 x 396, four times as wide as it is tall, and it shows a still: an animated file is shown as its
+ * first frame. So this draws the sign as it stands onto a canvas of that size and saves a PNG. The sign itself is
+ * about twice as wide as tall, so it is laid out again for the wider shape instead of being cropped, and it keeps to
+ * the right: LinkedIn puts the profile photo over the lower left of the banner. The bulbs are read from the sign on
+ * the page, so the picture shows exactly the number that was showing. */
+const BANNER = { w: 1584, h: 396, left: 392, right: 1560 };   // the lettering and bulbs stay between left and right
+const loadBill = (src) => new Promise((done) => { const im = new Image(); im.crossOrigin = 'anonymous'; im.onload = () => done(im); im.onerror = () => done(null); im.src = src; });
+/** The pieces of a line of lettering, with which are italic: the same <i>/<em> the sign allows. */
+function letteringRuns(id, upper) {
+  const out = []; const walk = (node, italic) => node.childNodes.forEach((n) => {
+    if (n.nodeType === 3) { if (n.textContent) out.push({ text: upper ? n.textContent.toUpperCase() : n.textContent, italic }); }
+    else if (n.nodeType === 1) walk(n, italic || /^(I|EM)$/.test(n.tagName));
+  });
+  walk($(id), false); return out;
+}
+async function drawBanner({ bills = true } = {}) {
+  const { w: W, h: H, left: L, right: R } = BANNER;
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const g = cv.getContext('2d');
+  g.fillStyle = '#6f7a66'; g.fillRect(0, 0, W, H);
+  // the banknotes, where the page put them: each is 46% of the width, placed by its own left, top and turn
+  const imgs = bills ? await Promise.all(BILLS.map(loadBill)) : [];
+  if (imgs.length && imgs.every(Boolean)) {
+    const canFilter = 'filter' in g; if (canFilter) g.filter = 'saturate(.55) brightness(.82) contrast(1.05)';
+    [...$('bills').children].forEach((b, k) => {
+      const bw = W * 0.46, bh = bw * 349 / 800; const x = parseFloat(b.style.left) / 100 * W, y = parseFloat(b.style.top) / 100 * H;
+      const turn = (parseFloat((/rotate\(([-\d.]+)deg\)/.exec(b.style.transform) || [])[1]) || 0) * Math.PI / 180;
+      const cols = 4; const im = imgs[(Math.floor(k / cols) + (k % cols)) % 2];
+      g.save(); g.translate(x + bw / 2, y + bh / 2); g.rotate(turn); g.shadowColor = 'rgba(0,0,0,.55)'; g.shadowBlur = 10; g.shadowOffsetY = 2;
+      g.drawImage(im, -bw / 2, -bh / 2, bw, bh); g.restore();
+    });
+    if (canFilter) g.filter = 'none'; else { g.fillStyle = 'rgba(70,76,64,.4)'; g.fillRect(0, 0, W, H); }   // no filter here: mute the notes with a wash
+  }
+  // the same darkening toward the edges as the sign
+  g.save(); g.translate(W / 2, H / 2); g.scale(W / H, 1);
+  const shade = g.createRadialGradient(0, 0, 0, 0, 0, H * 0.72); shade.addColorStop(0, 'rgba(20,24,18,.34)'); shade.addColorStop(1, 'rgba(8,10,7,.66)');
+  g.fillStyle = shade; g.fillRect(-H / 2, -H / 2, H, H); g.restore();
+
+  // one bulb pitch for the whole banner: the widest row fills the space, unless the height runs out first
+  const p = Math.min((R - L) / mainRow.units, (H - 40) / 24.7); const mid = (L + R) / 2;
+  const fontOf = (size, italic) => `${italic ? 'italic ' : ''}700 ${size}px "Times New Roman", Times, Georgia, serif`;
+  const widthOf = (runs, size) => runs.reduce((a, r) => { g.font = fontOf(size, r.italic); return a + g.measureText(r.text).width; }, 0);
+  const letter = (runs, size, x, y, align, room) => {
+    if ('letterSpacing' in g) g.letterSpacing = `${(size * 0.04).toFixed(2)}px`;
+    while (room && size > 10 && widthOf(runs, size) > room) size -= 1;
+    let at = align === 'center' ? x - widthOf(runs, size) / 2 : x;
+    g.textBaseline = 'middle'; g.fillStyle = '#f4efe2'; g.shadowColor = 'rgba(0,0,0,.7)'; g.shadowBlur = 8; g.shadowOffsetY = 2;
+    for (const r of runs) { g.font = fontOf(size, r.italic); g.fillText(r.text, at, y); at += g.measureText(r.text).width; }
+    g.shadowColor = 'transparent'; g.shadowBlur = 0; g.shadowOffsetY = 0;
+  };
+  const bulbs = (row, x, y) => {
+    for (const cell of row.el.children) {
+      const dots = cell.children; const cols = dots.length / 7; const cw = (cols + 1) * p, ch = 8 * p; const bare = cell.classList.contains('bare');
+      if (!bare) { g.fillStyle = '#070504'; g.beginPath(); g.roundRect ? g.roundRect(x, y, cw, ch, p * 0.25) : g.rect(x, y, cw, ch); g.fill(); }
+      for (let r = 0; r < 7; r += 1) for (let c = 0; c < cols; c += 1) {
+        const on = dots[r * cols + c].classList.contains('on'); if (!on && bare) continue;
+        const cx = x + p * (c + 1), cy = y + p * (r + 1), rad = p * 0.4;
+        if (on) {
+          const lit = g.createRadialGradient(cx - rad * 0.1, cy - rad * 0.2, 0, cx, cy, rad); lit.addColorStop(0, '#fff6cf'); lit.addColorStop(0.38, '#ffc34a'); lit.addColorStop(1, '#ff7e0a');
+          g.shadowColor = 'rgba(255,140,10,.95)'; g.shadowBlur = p * 0.7; g.fillStyle = lit;
+        } else { g.shadowColor = 'transparent'; g.shadowBlur = 0; g.fillStyle = '#2b1a0b'; }
+        g.beginPath(); g.arc(cx, cy, rad, 0, Math.PI * 2); g.fill();
+      }
+      g.shadowColor = 'transparent'; g.shadowBlur = 0;
+      x += cw + p * 0.5;
+    }
+  };
+  // from the top: the title, the big number, the second number with its label, the foot
+  let y = (H - 24.7 * p) / 2;
+  letter(letteringRuns('title', true), 3 * p, mid, y + 1.5 * p, 'center', R - L); y += 4 * p;
+  const rowW = mainRow.units * p, rowL = mid - rowW / 2, rowR = mid + rowW / 2;
+  bulbs(mainRow, rowL, y); y += 9.2 * p;
+  const subW = subRow.units * p; bulbs(subRow, rowR - subW, y);   // the second number ends where the big one ends, its label starts where the big one starts
+  letter(letteringRuns('sublabel', false), 2.3 * p, rowL, y + 4 * p, 'left', rowR - subW - rowL - 2 * p);
+  y += 9 * p;
+  letter(letteringRuns('foot', true), 2.5 * p, mid, y + 1.25 * p, 'center', R - L);
+  return cv;
+}
+$('banner').onclick = async () => {
+  $('msg').textContent = 'Drawing the banner…';
+  const saveIt = (cv) => new Promise((done, fail) => { try { cv.toBlob((b) => (b ? done(b) : fail(new Error('no picture'))), 'image/png'); } catch (e) { fail(e); } });
+  let blob; let plain = false;
+  try { blob = await saveIt(await drawBanner()); }
+  catch (e) { plain = true; try { blob = await saveIt(await drawBanner({ bills: false })); } catch (e2) { $('msg').textContent = 'This browser would not make the picture.'; return; } }   // the banknotes come from another site; if the browser will not let them into a picture, leave them out
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'severance-clock-linkedin-banner.png'; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  $('msg').textContent = `Banner saved: 1584 by 396, the size LinkedIn asks for. It shows the sign as it is right now${plain ? ', without the banknotes, which this browser would not copy' : ''}. On LinkedIn: your profile, the camera on the background, Upload photo.`;
+};
 window.addEventListener('resize', layout);
 window.addEventListener('hashchange', () => location.reload());   // a shared link pasted over an open clock
 

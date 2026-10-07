@@ -71,6 +71,15 @@ page always says, under the list, what is recorded and how far ahead the sign is
 - **Show only the sign** hides everything else, for a screen on the wall.
 - LinkedIn and most social posts cannot embed a live page. Post the link, or a short screen recording.
 
+### A LinkedIn banner
+
+**Download a LinkedIn banner** saves a picture of the sign as it is right now, 1584 by 396, the size LinkedIn asks
+for a profile background. On LinkedIn: open your profile, press the camera on the background, and upload the
+picture. The sign sits to the right in the picture, because LinkedIn puts your photo over the lower left.
+
+It is a still picture. LinkedIn does not play animation in a background, so the number in the banner is the number
+on the day you saved it; save a new one after a win.
+
 ## Without a sheet
 
 Clear the **Google Sheet of wins** field and the clock goes back to wins typed into **Latest win**. Those live
